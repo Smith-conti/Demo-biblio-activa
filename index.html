@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Biblio-Activa Cusco - Demo Final</title>
+<style>
+body{
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg,#4e73df,#1cc88a);
+    margin:0;
+}
+header{
+    color:white;
+    padding:20px;
+    text-align:center;
+    font-size:22px;
+    font-weight:bold;
+}
+.container{
+    padding:20px;
+}
+.card{
+    background:white;
+    padding:20px;
+    margin-bottom:20px;
+    border-radius:15px;
+    box-shadow:0 10px 25px rgba(0,0,0,0.15);
+}
+button{
+    background:#4e73df;
+    border:none;
+    padding:10px 15px;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+    margin-top:5px;
+}
+button:hover{
+    opacity:0.9;
+}
+input, select{
+    padding:8px;
+    margin:5px 0;
+    width:100%;
+}
+.checkbox-group{
+    margin:10px 0;
+}
+.tabs button{
+    background:#858796;
+    margin-right:5px;
+}
+.active-tab{
+    background:#4e73df !important;
+}
+.progress{
+    background:#ddd;
+    border-radius:20px;
+    height:20px;
+    overflow:hidden;
+}
+.progress-bar{
+    height:100%;
+    background:#1cc88a;
+    text-align:center;
+    color:white;
+}
+.medal{
+    font-size:40px;
+}
+.dashboard{
+    display:flex;
+    justify-content:space-between;
+}
+.stat{
+    background:#f8f9fc;
+    padding:15px;
+    border-radius:10px;
+    width:30%;
+    text-align:center;
+}
+</style>
+</head>
+<body>
+
+<header>Biblio-Activa Cusco - Sistema Demo</header>
+
+<div class="container">
+
+<div class="tabs">
+<button onclick="showAdmin()" id="btnAdmin" class="active-tab">Administrador</button>
+<button onclick="showUser()" id="btnUser">Lector</button>
+</div>
+
+<div id="adminView">
+
+<div class="card">
+<h3>Registrar Nuevo Lector</h3>
+<input type="text" id="newUser" placeholder="Nombre del lector">
+<button onclick="addUser()">Registrar</button>
+</div>
+
+<div class="card">
+<h3>Registrar Libro Leído</h3>
+<select id="userSelect"></select>
+<input type="text" id="bookName" placeholder="Nombre del libro">
+<select id="bookType">
+<option value="10">Libro Corto (10 pts)</option>
+<option value="15">Libro Mediano (15 pts)</option>
+<option value="20">Libro Largo (20 pts)</option>
+</select>
+
+<div class="checkbox-group">
+<label><input type="checkbox" id="review"> Escribió reseña (+5 pts)</label><br>
+<label><input type="checkbox" id="activity"> Participó en el club (+10 pts)</label>
+</div>
+
+<button onclick="addBook()">Registrar Libro</button>
+</div>
+
+<div class="card">
+<h3>Dashboard General</h3>
+<div class="dashboard">
+<div class="stat">
+<h4>Total Lectores</h4>
+<p id="totalUsers">0</p>
+</div>
+<div class="stat">
+<h4>Total Libros</h4>
+<p id="totalBooks">0</p>
+</div>
+<div class="stat">
+<h4>Total Puntos</h4>
+<p id="totalPoints">0</p>
+</div>
+</div>
+<button onclick="resetDemo()" style="background:#e74a3b">Reiniciar Demo</button>
+</div>
+
+</div>
+
+<div id="userView" style="display:none">
+
+<div class="card">
+<h3>Carnet Virtual</h3>
+<select id="viewerSelect" onchange="renderUser()"></select>
+<div id="userInfo"></div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+let users = JSON.parse(localStorage.getItem("biblioUsers")) || [];
+
+function save(){
+    localStorage.setItem("biblioUsers", JSON.stringify(users));
+}
+
+function level(points){
+    if(points <= 30) return "Explorador";
+    if(points <= 70) return "Lector Activo";
+    return "Embajador Cultural";
+}
+
+function medal(points){
+    if(points <= 30) return "🥉";
+    if(points <= 70) return "🥈";
+    return "🥇";
+}
+
+function addUser(){
+    let name = document.getElementById("newUser").value;
+    if(!name) return;
+    users.push({name:name, points:0, books:[]});
+    save();
+    document.getElementById("newUser").value="";
+    renderAll();
+}
+
+function addBook(){
+    let userIndex = document.getElementById("userSelect").value;
+    let book = document.getElementById("bookName").value;
+    let pts = parseInt(document.getElementById("bookType").value);
+    let review = document.getElementById("review").checked;
+    let activity = document.getElementById("activity").checked;
+
+    let extra = (review?5:0) + (activity?10:0);
+
+    if(!book) return;
+
+    users[userIndex].books.push({
+        title:book,
+        totalPoints:pts+extra
+    });
+
+    users[userIndex].points += pts+extra;
+
+    save();
+
+    document.getElementById("bookName").value="";
+    document.getElementById("review").checked=false;
+    document.getElementById("activity").checked=false;
+
+    renderAll();
+}
+
+function renderAll(){
+    renderAdmin();
+    updateDashboard();
+}
+
+function renderAdmin(){
+    let select = document.getElementById("userSelect");
+    let viewer = document.getElementById("viewerSelect");
+
+    select.innerHTML="";
+    viewer.innerHTML="";
+
+    users.forEach((u,i)=>{
+        select.innerHTML += `<option value="${i}">${u.name}</option>`;
+        viewer.innerHTML += `<option value="${i}">${u.name}</option>`;
+    });
+}
+
+function renderUser(){
+    let index = document.getElementById("viewerSelect").value;
+    let u = users[index];
+    let percent = Math.min((u.points/120)*100,100);
+
+    document.getElementById("userInfo").innerHTML = `
+        <div class="medal">${medal(u.points)}</div>
+        <p><strong>${u.name}</strong></p>
+        <p>Puntos: ${u.points}</p>
+        <p>Nivel: ${level(u.points)}</p>
+        <div class="progress">
+            <div class="progress-bar" style="width:${percent}%">${Math.round(percent)}%</div>
+        </div>
+        <h4>Libros leídos:</h4>
+        <ul>
+        ${u.books.map(b=>`<li>${b.title} - ${b.totalPoints} pts</li>`).join("")}
+        </ul>
+    `;
+}
+
+function updateDashboard(){
+    document.getElementById("totalUsers").innerText = users.length;
+    document.getElementById("totalBooks").innerText = users.reduce((a,b)=>a+b.books.length,0);
+    document.getElementById("totalPoints").innerText = users.reduce((a,b)=>a+b.points,0);
+}
+
+function resetDemo(){
+    localStorage.removeItem("biblioUsers");
+    users=[];
+    renderAll();
+    updateDashboard();
+}
+
+function showAdmin(){
+    document.getElementById("adminView").style.display="block";
+    document.getElementById("userView").style.display="none";
+    document.getElementById("btnAdmin").classList.add("active-tab");
+    document.getElementById("btnUser").classList.remove("active-tab");
+}
+
+function showUser(){
+    document.getElementById("adminView").style.display="none";
+    document.getElementById("userView").style.display="block";
+    document.getElementById("btnUser").classList.add("active-tab");
+    document.getElementById("btnAdmin").classList.remove("active-tab");
+    renderUser();
+}
+
+renderAll();
+updateDashboard();
+
+</script>
+
+</body>
+</html>
